@@ -563,6 +563,10 @@ format as specified by the corresponding Lock Assertion Claim Format value.
 
 The peer gateways in SATP must establish a TLS session between them prior to starting the transfer initiation stage (Stage-0). The TLS session continues until the transfer is completed at the end of the commitment establishment stage (Stage-3).
 
+### Client and Servers
+
+{: #satp-clients-servers}
+
 In the following steps, the sender gateway is referred to as the client while the receiver gateway as the server.
 
 Clients and servers MUST use the HTTPS protocol.
