@@ -328,7 +328,7 @@ SATP recognizes the following cryptographic keys which are intended for distinct
 
 - Gateway signature public key-pair: This is the key-pair utilized by a gateway to digitally sign assertions and receipts.
 
-- Gateway secure channel establishment public key-pair: This is the key-pair utilized by peer gateways to establish a secure channel (e.g. TLS1.3) for a transfer session.
+- Gateway secure channel establishment public key-pair: This is the key-pair utilized by peer gateways to establish a secure channel (using TLS1.3) for a transfer session.
 
 - Gateway identity public key pair: This is the key-pair that uniquely identifies a gateway.
 
@@ -565,6 +565,14 @@ The peer gateways in SATP must establish a TLS session between them prior to sta
 
 In the following steps, the sender gateway is referred to as the client while the receiver gateway as the server.
 
+Clients and servers MUST use the HTTPS protocol.
+
+Servers MUST support the use of the HTTPS POST method for the endpoint. It is NOT RECOMMENDED to support the use
+of the HTTPS GET method, because the messages may change the state of the protocol and are not idempotent [RFC 9110].
+
+Clients MUST use the HTTPS POST method to send messages in this stage to the server.
+
+
 ### TLS Secure Channel Establishment
 
 {: #satp-tls-Established-sec}
@@ -582,7 +590,7 @@ The details of the assertion/verification step are specific to the chosen creden
 
 ### Messages can now be exchanged
 
-{: #satp-msg-exchnge-sec}
+{: #satp-msg-exchange-sec}
 
 Handshaking is complete at this point, and the client and server can begin exchanging SATP messages.
 
@@ -692,13 +700,6 @@ This section describes the transfer initiation stage, where the sender gateway a
 The sender gateway proposes the set of transfer parameters and asset-related artifacts for the transfer to the receiver gateway. These are contained in the Transfer Initiation Claim.
 
 If the receiver gateway accepts the proposal, it returns a signed receipt message for the proposal indicating it agrees to proceed to the next stage. If the receiver gateway rejects any parameters or artifacts in the proposal, it can provide a counteroffer to the sender gateway by responding with a proposal reject message carrying alternative parameters.
-
-Gateways MUST support the use of the HTTP GET and POST methods for the endpoint [RFC9110].
-
-Clients (sender gateway) MAY use the HTTP GET or POST methods to send messages
-in this stage to the server (recipient gateway).
-If using the HTTP GET method, the request parameters may be
-serialized using URI Query String Serialization.
 
 
 ## Transfer Initialization Claim
@@ -1002,11 +1003,6 @@ while the recipient gateway takes the role of the server.
 The flow follows a request-response model.
 The client makes a request (POST) to the Lock-Assertion Endpoint at the server.
 
-Gateways MUST support the use of the HTTP GET and POST methods for the endpoint.
-
-Clients MAY use the HTTP GET or POST methods to send messages in this stage to the server.
-If using the HTTP GET method, the request parameters may be serialized
-using URI Query String Serialization.
 
 
 ## Lock Assertion Message
@@ -1104,12 +1100,6 @@ is received by the client, the client may terminate the session.
 
 The flow follows a request-response model.
 The client makes a request (POST) to the Transfer Commitment endpoint at the server.
-
-Gateways MUST support the use of the HTTP GET and POST methods for the endpoint.
-
-Clients MAY use the HTTP GET or POST methods to send messages in this stage to the server.
-If using the HTTP GET method, the request parameters may be serialized
-using URI Query String Serialization.
 
 The client and server may be required to sign certain messages
 in order to provide standalone proof (for non-repudiation) independent of the
