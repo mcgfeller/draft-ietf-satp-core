@@ -119,7 +119,7 @@ informative:
     - ins: T. Hardjono
     date: April 2024
     target: https://doi.org/10.1016/j.future.2021.11.004
-    title: Hermes a Fault-tolerant middleware for blockchain interoperability
+    title: Hermes: A Fault-tolerant Middleware for Blockchain Interoperability
 
   W3CVC:
     author:
@@ -148,7 +148,7 @@ normative:
   RFC6749: RFC6749
   RFC7518: RFC7518
   REQ-LEVEL: RFC2119
-  RFC8446: RFC8446
+  RFC9846: RFC9846
   RFC4648: RFC4648
   DATETIME: RFC3339
   RFC9110: RFC9110
@@ -209,8 +209,6 @@ the transfer has been committed by both gateways,
 that this commitment must hold regardless of subsequent
 unavailability (e.g. crash) of the gateways implementing the SATP protocol.
 
-All messages exchanged between gateways are assumed to run over TLS1.3.
-HTTPS must be used instead of plain HTTP.
 
 The endpoints at the respective gateways should provide access to credentials
 (or other identification mechanisms) to prove the legal owner (or operator) of the gateway.
@@ -305,6 +303,12 @@ The Client (application) interacts with its local gateway (G1) over an interface
 
 Gateways interact with each other over a gateway interface (API2). A given gateway may be required to access resources that are not located in network NW1 or network NW2. Access to these types of resources are performed over an off-network interface (API3).
 
+## Required Gateway Operations on Asset Networks
+
+Gateways are assumed to have the capabilities to lock, unlock, burn and mint assets in the asset network that they serve.
+See section {{<lock-mechanism}} for the locking mechanism.
+
+
 ## Stages of the Protocol
 
 {: #satp-flowtypes}
@@ -329,7 +333,7 @@ SATP recognizes the following cryptographic keys which are intended for distinct
 
 - Gateway signature public key-pair: This is the key-pair utilized by a gateway to digitally sign assertions and receipts.
 
-- Gateway secure channel establishment public key-pair: This is the key-pair utilized by peer gateways to establish a secure channel (using TLS1.3) for a transfer session.
+- Gateway secure channel establishment public key-pair: See {{<transport-secure-channel}}.
 
 - Gateway identity public key pair: This is the key-pair that uniquely identifies a gateway.
 
@@ -370,12 +374,7 @@ Additional signature algorithms and keying parameters may be negotiated by peer 
 
 ## SATP Message Format and Payloads
 
-{: #satp-message-format}
 
-SATP messages are exchanged between peer gateways, where depending on the message type one gateway may act as a client of the other (and vice versa).
-
-All SATP messages exchanged between gateways MUST be JSON format [RFC8259], and MUST use `application/satp+json` as the application media type
-([RFC6838]; see section {{<satp-iana-consideration}}).
 
 ### Protocol version
 
@@ -483,7 +482,9 @@ A gateway may support additional credential mechanisms, which may be advertised 
 
 ### Gateway Supported TLS Schemes
 
-Gateways MUST support TLS1.3 [RFC8446].
+TODO [#79](https://github.com/ietf-satp/draft-ietf-satp-core/issues/79): Move? Why negotiate this at L7?
+
+Gateways MUST support TLS1.3 [RFC9846].
 
 The TLS scheme is used by peer gateways to establish the TLS session prior to the commencement of an asset transfer. Gateways MUST support cryptographic schemes at least as secure AES-128 in GCM mode with SHA-256 (TLS_AES_128_GCM_SHA256).
 
@@ -499,7 +500,7 @@ gatewayTlsScheme" (err_1.1.34) reject error message is returned by the server
 
 If a client (sender gateway) wishes to use TLS schemes other than the basic scheme (AES-128 in GCM mode with SHA-256), then the client may may choose to send a JSON object listing the client's supported TLS schemes.
 
-These must be selected from those defined in TLS1.3 [RFC8446].
+These must be selected from those defined in TLS1.3 [RFC9846].
 
 ### Gateway Identifier
 
@@ -536,6 +537,9 @@ See section {{<satp-message-signatures}}.
 
 ### Asset Lock Mechanism within a Network
 
+{: #lock-mechanism}
+
+
 SATP gateways may be providing service to multiple types of asset networks, each of which may utilize different local mechanisms to immobile (lock) a given asset as way to provide exclusion in the case of multiple attempts to change the state of the asset.
 
 The origin network and the destination network may in fact utilize distinct asset locking mechanisms, and the type of mechanisms to immobile (lock) a given asset may have different convergence (finalization) speeds. Peer gateways must exchange information about the asset locking information in their respective network to enable both gateways to compute an approximate time of convergence (assetLockExpirationTime) and set timers for the transfer of asset. A timer that expires too soon may result in the SATP protocol terminating too early before reaching the final commitment stage.
@@ -559,46 +563,74 @@ the selection must occur prior to the establishment of the session.
 The actual encoded JSON string representation of the claim using the
 format as specified by the corresponding Lock Assertion Claim Format value.
 
-## Negotiation of Security Protocols and Parameters
-
-{: #satp-negotiation-params-sec}
-
-The peer gateways in SATP must establish a TLS session between them prior to starting the transfer initiation stage (Stage-0). The TLS session continues until the transfer is completed at the end of the commitment establishment stage (Stage-3).
-
-### Clients and Servers
-
-{: #satp-clients-servers}
-
-In the following steps, the sender gateway is referred to as the client while the receiver gateway as the server.
-
-Clients and servers MUST use the HTTPS protocol.
-
-Servers MUST support the use of the HTTPS POST method for the endpoint. It is NOT RECOMMENDED to support the use
-of the HTTPS GET method, because the messages may change the state of the protocol and are not idempotent [RFC 9110].
-
-Clients MUST use the HTTPS POST method to send messages in this stage to the server.
 
 
-### TLS Secure Channel Establishment
+# Transport Considerations: HTTP
 
-{: #satp-tls-Established-sec}
+{: #transport-http}
 
-TLS 1.3 MUST be implemented to protect gateway communications.
+## Transport requirements
+
+The following properties are required from the transport that carries SATP messages between gateways:
+
+- SATP messages between peer gateways are assumed to run over a secure transport which provides gateway mutual authentication and confidentiality.
+- For each SATP session, the secure transport is assumed to have cryptographic binding to the SATP messages within that session.
+- The secure transport is assumed to provide message sequencing, message  retransmissions, and replay attack detection.
+
+In this specification, HTTP on top of TLS provide the secure transport. SATP messages are exchanged as HTTP requests
+between peer gateways, using https as the URI scheme.
+
+## Requests
+
+A gateway MUST use the https POST method to send messages to another gateway.
+
+Gateways MUST support the use of the https POST method to receive messages. It is NOT RECOMMENDED to support the use
+of the https GET method, because the messages may change the state of the protocol and are not idempotent [RFC 9110].
+
+All successful POST requests return an empty response with HTTP status code 200. If there is an error, an error status code and message are returned.
+
+TODO [#73]
 
 
 
+### Payload
 
-### Client asserts or proves identity
+{: #satp-message-format}
 
-{: #client-procedure-sec}
+All SATP messages exchanged between gateways MUST use the JSON format [RFC8259], and MUST use `application/satp+json` as the application media type
+([RFC6838]; see section {{<satp-iana-consideration}}).
 
-The details of the assertion/verification step are specific to the chosen credential scheme and are outside the scope of this document.
+### Headers
 
-### Messages can now be exchanged
+The standard HTTP headers are used. There are no additional headers required by this specification.
 
-{: #satp-msg-exchange-sec}
+## Secure channel
 
-Handshaking is complete at this point, and the client and server can begin exchanging SATP messages.
+{: #transport-secure-channel}
+
+The peer gateways in SATP must establish a TLS session between them prior to starting the transfer initiation stage (Stage-0).
+The TLS session continues until the transfer is completed at the end of the commitment establishment stage (Stage-3). The https URI scheme MUST be used.
+
+TLS 1.3 [RFC9846] or later must be used.
+
+Mutual TLS (mTLS) MUST be used to establish a connection. This means the server must request a certificate from the client [RFC9846, section 4.4.2].
+
+
+## Channel binding
+
+TODO [#74]: Discussion of Channel Binding (Specify Channel Binding as RECOMMENDED option (SECDIR review)
+
+## Reliability considerations
+
+While HTTP ensures that requests arrive in sequence, a connection may drop or a component may stop working while a request is being transmitted or processed.
+Gateways should use long timeouts of at least 60 seconds to detect such failures. In case of a timeout or a failure, gateways should terminate the session and not retransmit the request.
+
+If a duplicate or out of sequence request is detected by the gateway, the SATP protocol will terminate the session.
+
+If a session terminates or a gateway crashes, the assets on a network may be left in an inconsistent state, requiring crash recovery.
+Crash recovery is described in [BELC], but is outside the scope of this specification.
+
+
 
 
 # Overview of Message Flows
@@ -952,7 +984,7 @@ The parameters of this message consist of the following:
 - hashPrevMessage REQUIRED.  The cryptographic hash of the last message, in this case the
   Transfer Proposal Receipt message. The default hash algorithm is SHA256.
 
-For example, the client makes the following HTTP request using TLS:
+For example, the client makes the following HTTP request using TLS: # TODO
 
 {
     "messageType": "urn:ietf:params:satp:core:msgtype:transfer-commence-msg",
